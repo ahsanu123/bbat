@@ -1,35 +1,11 @@
-use color_eyre::Result;
-use crossterm::event::{self, Event};
-use ratatui::{DefaultTerminal, Frame};
-use std::env;
+use app::App;
+use std::io;
 
-use crate::garden::vegetables::Asparagus;
+mod app;
 
-pub mod garden;
-
-fn main() -> Result<()> {
-    let args: Vec<String> = env::args().collect();
-    dbg!(args);
-
-    let asparagus = Asparagus {};
-    // println!("asparagus: {asparagus:?}");
-    color_eyre::install()?;
-    let terminal = ratatui::init();
-    let result = run(terminal);
+fn main() -> io::Result<()> {
+    let mut terminal = ratatui::init();
+    let app_result = App::default().run(&mut terminal);
     ratatui::restore();
-
-    result
-}
-
-fn run(mut terminal: DefaultTerminal) -> Result<()> {
-    loop {
-        terminal.draw(render)?;
-        if matches!(event::read()?, Event::Key(_)) {
-            break Ok(());
-        }
-    }
-}
-
-fn render(frame: &mut Frame) {
-    frame.render_widget("hello world", frame.area());
+    app_result
 }

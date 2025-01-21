@@ -6,3 +6,13 @@ edition = "2021"
 [dependencies]
 crossterm = "0.28.1"
 ratatui = "0.29.0"
+sea-query = "0.32.1"
+sea-query-binder = {version = "0.7.0", features = [
+   "sqlx-sqlite",
+    "with-chrono",
+    "with-json",
+]}
+sqlx = { version = "0.8.3", features = [ "runtime-tokio" ] }
+tokio = "1.43.0"
+tokio-macros = "2.5.0"
+

@@ -1,3 +1,4 @@
+pub mod app_macro;
 pub mod commands;
 pub mod model;
 pub mod repository;

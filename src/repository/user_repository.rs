@@ -1,7 +1,11 @@
+use crate::app_macro;
 use crate::model::User;
 use sea_query::{ColumnDef, Expr, Func, Iden, OnConflict, Order, Query, SqliteQueryBuilder, Table};
 use sea_query_binder::SqlxBinder;
+use sqlx::sqlite::SqliteConnectOptions;
 use sqlx::{Row, SqlitePool};
+use strum::IntoEnumIterator;
+use strum_macros::EnumIter;
 use tokio_macros;
 
 #[derive(Iden)]
@@ -38,10 +42,18 @@ impl UserRepository {
     }
     pub async fn list_user() {}
 }
+#[derive(EnumIter, Debug, PartialEq)]
+enum Color {
+    Red,
+    Green,
+    Blue,
+    Yellow,
+}
+
+// It's simple to iterate over the variants of an enum.
 
 #[cfg(test)]
 mod tests {
-    use sqlx::sqlite::SqliteConnectOptions;
 
     use super::*;
 
@@ -72,6 +84,12 @@ mod tests {
             .build(SqliteQueryBuilder);
 
         let result = sqlx::query(&sql).execute(&pool).await;
-        println!("Create table character: {result:?}\n");
+
+        println!("=============RESULT==================");
+        for color in Color::iter() {
+            println!("My favorite color is {:?}", color);
+        }
+        println!("Create table character: {result:?}");
+        println!("=====================================");
     }
 }

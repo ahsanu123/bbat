@@ -15,4 +15,6 @@ sea-query-binder = {version = "0.7.0", features = [
 sqlx = { version = "0.8.3", features = [ "runtime-tokio" ] }
 tokio = "1.43.0"
 tokio-macros = "2.5.0"
-
+strum = "0.26"
+strum_macros = "0.26"
+confy = "0.6.1"

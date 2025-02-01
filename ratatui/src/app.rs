@@ -8,14 +8,22 @@ use ratatui::{
 };
 use std::{io, ops::Not};
 
+macro_rules! time_five {
+    ($e: expr) => {
+        5 * $e
+    };
+}
+
 #[derive(Debug, Default)]
 pub struct App {
+    mem: [u64; 2],
     counter: u8,
     exit: bool,
 }
 
 impl App {
     pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
+        print!("hellyeah");
         while !self.exit {
             terminal.draw(|frame| self.draw(frame))?;
             self.handle_events()?;

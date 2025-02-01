@@ -1,4 +1,6 @@
 pub mod models;
+pub mod query;
+pub mod repository;
 pub mod schema;
 
 use self::models::{NewPost, Post};

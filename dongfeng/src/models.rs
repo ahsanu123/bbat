@@ -1,5 +1,7 @@
+mod product;
 use crate::schema::posts;
 use diesel::prelude::*;
+pub use product::*;
 
 #[derive(Queryable, Selectable)]
 #[diesel(table_name = crate::schema::posts)]

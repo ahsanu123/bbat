@@ -1,3 +1,1 @@
-mod product_query;
-
-pub use product_query::*;
+pub mod product_query;

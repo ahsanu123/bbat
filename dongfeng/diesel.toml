@@ -5,5 +5,13 @@
 file = "src/schema.rs"
 custom_type_derives = ["diesel::query_builder::QueryId", "Clone"]
 
+[print_schema.user]
+file = "src/user_schema.rs"
+custom_type_derives = ["diesel::query_builder::QueryId", "Clone"]
+
+[print_schema.product]
+file = "src/product_schema.rs"
+custom_type_derives = ["diesel::query_builder::QueryId", "Clone"]
+
 [migrations_directory]
 dir = "/home/ah/project/bbat/dongfeng/migrations"

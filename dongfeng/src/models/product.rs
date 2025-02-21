@@ -1,4 +1,4 @@
-use chrono::{DateTime, Local, NaiveDate};
+use chrono::NaiveDate;
 use diesel::prelude::{Insertable, Queryable, Selectable};
 use std::string::String;
 

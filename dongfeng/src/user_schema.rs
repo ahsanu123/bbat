@@ -1,7 +1,7 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
-    product (id) {
+    dregs (id) {
         id -> Integer,
         username -> Text,
         user_id -> Integer,
@@ -14,3 +14,15 @@ diesel::table! {
         description -> Text,
     }
 }
+
+diesel::table! {
+    posts (id) {
+        id -> Integer,
+        title -> Text,
+        body -> Text,
+        published -> Bool,
+        description -> Text,
+    }
+}
+
+diesel::allow_tables_to_appear_in_same_query!(dregs, posts,);

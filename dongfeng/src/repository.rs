@@ -1,3 +1,1 @@
-mod product_repository;
-
-pub use product_repository::*;
+pub mod product_repository;

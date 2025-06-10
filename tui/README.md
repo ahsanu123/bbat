@@ -1,25 +1,9 @@
-# Demo example
+# Introduction 
 
-This is the original demo that was developed for Tui-rs (the library that Ratatui was forked from).
+try to understand this ratatui example, split code into readable file.
+there is [embedded backend](https://github.com/j-g00da/mousefood) for ratatui, so its able to run on embedded device, learn that after you understand the concept
 
-![demo.gif](https://github.com/ratatui/ratatui/blob/images/examples/demo.gif?raw=true)
 
-This example is available for each backend. To run it:
+## Reference 
 
-## crossterm
-
-```shell
-cargo run -p demo
-```
-
-## termion
-
-```shell
-cargo run -p demo --no-default-features --features termion
-```
-
-## termwiz
-
-```shell
-cargo run -p demo --no-default-features --features termwiz
-```
+- there is discussion about MVC pattern in ratatui for better organizing complex application https://github.com/ratatui/ratatui/discussions/220

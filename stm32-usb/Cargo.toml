@@ -1,0 +1,71 @@
+# This file was automatically generated.
+
+[package]
+edition = "2021"
+name = "stm32-usb"
+version = "0.1.0"
+
+[dependencies]
+embassy-stm32 = { version = "0.2.0", features = ["memory-x", "stm32f407vg", "time-driver-any", "exti", "unstable-pac"] }
+embassy-sync = "0.7.0"
+embassy-executor = { version = "0.7.0", features = ["arch-cortex-m", "executor-thread"] }
+embassy-time = { version = "0.4.0", features = ["tick-hz-32_768"] }
+embassy-usb = {version = "0.4.0", features=["defmt"]}
+embassy-futures = "0.1.1"
+embedded-hal = "1.0.0"
+embedded-hal-bus = { version = "0.3", features = ["async"] }
+embedded-io = { version = "0.6.0" }
+embedded-io-async = { version = "0.6.1" }
+
+cortex-m = { version = "0.7.7", features = ["inline-asm", "critical-section-single-core"] }
+cortex-m-rt = "0.7.5"
+
+defmt = { version = "1.0.1", optional = true }
+defmt-rtt = { version = "1.0.0", optional = true }
+
+panic-halt = "1.0.0"
+panic-probe = { version = "1.0.0", features = ["print-defmt"], optional = true }
+
+futures-util = { version = "0.3.30", default-features = false }
+heapless = { version = "0.8", default-features = false }
+critical-section = "1.1"
+nb = "1.0.0"
+embedded-storage = "0.3.1"
+micromath = "2.0.0"
+usbd-hid = "0.8.1"
+static_cell = "2"
+chrono = { version = "^0.4", default-features = false}
+
+[[bin]]
+name = "stm32-usb"
+test = false
+bench = false
+
+[profile.dev]
+debug = true
+lto = true
+opt-level = "z"
+incremental = true
+
+[profile.release]
+debug = false
+lto = true
+opt-level = "z"
+incremental = true
+
+[features]
+defmt = ["dep:defmt"]
+defmt-rtt = ["dep:defmt-rtt"]
+panic-probe = ["dep:panic-probe"]
+default = ["debug"]
+debug = [
+    "defmt",
+    "defmt-rtt",
+    "panic-probe",
+    "embassy-executor/defmt",
+    "embassy-sync/defmt",
+    "embassy-futures/defmt",
+    "embassy-time/defmt",
+    "embassy-time/defmt-timestamp-uptime",
+    "embassy-stm32/defmt",
+]

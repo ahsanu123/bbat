@@ -126,6 +126,6 @@ mod test {
             .weapon(Weapon::Axes)
             .build("Older Axes Master".into());
 
-        println!("{}", axes_hero);
+        println!("{axes_hero}");
     }
 }

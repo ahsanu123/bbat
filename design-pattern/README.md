@@ -31,6 +31,7 @@
 
 ## Reference 
 
+- [Rust Design Pattern](https://github.com/fadeevab/design-patterns-rust)
 - [Iluwatar Design Pattern Github Repo](https://github.com/iluwatar/java-design-patterns)
 - [Refactoring Guru](https://refactoring.guru/design-patterns)
 - [Rust Design Pattern](https://rust-unofficial.github.io/patterns/)

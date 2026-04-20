@@ -1,0 +1,9 @@
+[package]
+name = "firebirdtest"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+firebirust = "0.6.2"
+
+rsfbclient = {version = "0.26.0", features = ["native_client", "dynamic_loading", "pure_rust"]}

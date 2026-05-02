@@ -23,6 +23,7 @@ fn main() -> Result<(), FbError> {
     // - login into isql-fb with SYSDBA
     // - then create user `create user ah password '123';`
     // - then add role to newly user `grant RDB$ADMIN to ah`
+    // - or all `GRANT ALL ON DATABASE TO ah`
 
     let cwd = env::current_dir().unwrap();
     println!("cwd: {}", cwd.to_string_lossy());

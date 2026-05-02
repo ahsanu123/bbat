@@ -5,10 +5,7 @@ use anyhow::{Ok, Result};
 use chrono::DateTime;
 use chrono::Utc;
 use once_cell::sync::OnceCell;
-use rsfbclient::Connection;
-use rsfbclient::DynLink;
 use rsfbclient::SimpleConnection;
-use rsfbclient::prelude::*;
 use simple_migrator::models::MigrationStatus;
 use simple_migrator::{
     executor::ExecutorTrait, migrations::MigrationTrait, runner_builder::RunnerBuilder,
@@ -22,20 +19,6 @@ fn main() -> Result<()> {
 
     Ok(())
 }
-
-// let cwd = env::current_dir().unwrap();
-// println!("cwd: {}", cwd.to_string_lossy());
-//
-// let db_path = cwd.join("firebird-test.fdb");
-// println!("cwd: {}", db_path.to_string_lossy());
-//
-// let mut conn = rsfbclient::builder_native()
-//     .with_dyn_link()
-//     .with_embedded()
-//     .db_name(db_path.to_string_lossy())
-//     .user("ah")
-//     .connect()
-//     .unwrap();
 
 pub static DATABASE_CONNECTION: OnceCell<Mutex<SimpleConnection>> = OnceCell::new();
 

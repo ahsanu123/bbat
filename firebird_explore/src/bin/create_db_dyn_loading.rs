@@ -42,6 +42,8 @@ fn main() -> Result<(), FbError> {
     let version = conn.server_engine();
     println!("Server version: {:?}", version);
 
+    conn.execute("EXECUTE BLOCK AS DECLARE VARIABLE var_SecondsOfTime INT; BEGIN SELECT 1 FROM RDB$DATABASE INTO :var_SecondsOfTime; END", ()).expect("fail to execute with semicolon");
+
     let p1 = ParamTest {
         colb: 150.0,
         colc: "Café".to_string(),

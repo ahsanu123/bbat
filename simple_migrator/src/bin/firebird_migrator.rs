@@ -53,7 +53,7 @@ impl ExecutorTrait for FirebirdDbExecutor {
         todo!()
     }
 
-    fn get_applied(&self) -> anyhow::Result<Vec<simple_migrator::models::MigrationStatus>> {
+    fn get_applied(&self) -> Result<Vec<MigrationStatus>> {
         todo!()
     }
 
@@ -105,5 +105,25 @@ impl MigrationTrait for Migration1 {
         let utc_dt: DateTime<Utc> = DateTime::from(dt);
 
         Ok(utc_dt)
+    }
+}
+
+#[cfg(test)]
+mod test_firebird_migrator_bin {
+    use super::*;
+
+    #[test]
+    fn string_to_date() {
+        let date_str = "2024-05-02 11:30:00 +0000";
+        // Define the format matching the string exactly
+        let format = "%Y-%m-%d %H:%M:%S %z";
+
+        // Parse to FixedOffset first
+        let dt = DateTime::parse_from_str(date_str, format).expect("Failed to parse");
+
+        // Convert to Utc or Local if needed
+        let utc_dt: DateTime<Utc> = DateTime::from(dt);
+
+        println!("{}", utc_dt);
     }
 }

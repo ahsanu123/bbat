@@ -5,7 +5,6 @@ use crate::models::MigrationStatus;
 
 pub trait ExecutorTrait {
     fn execute<P: IntoParams>(&mut self, statement: String, param: P) -> Result<()>;
-    fn query<T, P: IntoParams>(&mut self, statement: String, param: P) -> Result<T>;
     fn get_applied(&self) -> Result<Vec<MigrationStatus>>;
 
     fn ensure_migration_table(&mut self) -> Result<()>;

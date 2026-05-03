@@ -1,23 +1,83 @@
 use anyhow::anyhow;
 use anyhow::{Ok, Result};
-use chrono::DateTime;
-use chrono::Utc;
+use chrono::NaiveDateTime;
 use once_cell::sync::OnceCell;
 use rsfbclient::Row;
 use rsfbclient::SimpleConnection;
 use rsfbclient::{Execute, Queryable};
 use simple_migrator::models::MigrationStatus;
+use simple_migrator::runner::RunnerTrait;
 use simple_migrator::{
     executor::ExecutorTrait, migrations::MigrationTrait, runner_builder::RunnerBuilder,
 };
 use std::env;
 use std::sync::Mutex;
 
+use clap::{Parser, ValueEnum};
+
+#[derive(Parser)]
+#[command(version, about, long_about = None)]
+struct Cli {
+    /// up or down
+    #[arg(value_enum)]
+    mode: Mode,
+
+    /// up or down to some migration id
+    migrate_to: Option<String>,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+enum Mode {
+    /// Run swiftly
+    Up,
+    /// Crawl slowly but steadily
+    ///
+    /// This paragraph is ignored because there is no long help text for possible values.
+    Down,
+
+    Getapplied,
+
+    Printallmigrations,
+
+    Getunapplied,
+}
+
 fn main() -> Result<()> {
-    let fb_runner = RunnerBuilder::create()
+    let cli = Cli::parse();
+
+    let mut fb_runner = RunnerBuilder::create()
         .with_executor(FirebirdDbExecutor)
-        .add_migrations(vec![Migration1])
+        .add_migration(Migration1)
+        .add_migration(Migration2)
         .build()?;
+
+    match cli.mode {
+        Mode::Up => {
+            if let Some(migration_id) = cli.migrate_to {
+                fb_runner.up_to(migration_id)?;
+            } else {
+                fb_runner.up()?;
+            };
+        }
+        Mode::Down => {
+            if let Some(migration_id) = cli.migrate_to {
+                fb_runner.down_to(migration_id)?;
+            } else {
+                fb_runner.down()?;
+            };
+        }
+        Mode::Getapplied => {
+            let applied = fb_runner.get_applied()?;
+            println!("applied migrations: {:#?}", applied);
+        }
+        Mode::Getunapplied => {
+            let unapplied = fb_runner.get_unapplied()?;
+            println!("un-applied migrations: {:#?}", unapplied);
+        }
+        Mode::Printallmigrations => {
+            fb_runner.print_all_migrations()?;
+        }
+    };
 
     Ok(())
 }
@@ -55,10 +115,6 @@ impl ExecutorTrait for FirebirdDbExecutor {
         conn.execute(&statement, param)?;
 
         Ok(())
-    }
-
-    fn query<T, P: rsfbclient::IntoParams>(&mut self, statement: String, param: P) -> Result<T> {
-        todo!()
     }
 
     fn get_applied(&self) -> Result<Vec<MigrationStatus>> {
@@ -127,41 +183,89 @@ impl ExecutorTrait for FirebirdDbExecutor {
     }
 }
 
+#[derive(Debug)]
 struct Migration1;
 
 impl MigrationTrait for Migration1 {
     fn get_id(&self) -> String {
-        todo!()
+        "1".into()
     }
 
     fn get_name(&self) -> String {
-        todo!()
+        "create price table".into()
     }
 
     fn get_description(&self) -> String {
-        todo!()
+        "create price table".into()
     }
 
-    fn up(&self) -> anyhow::Result<()> {
-        todo!()
+    fn up(&self) -> Result<()> {
+        let mut conn = get_db_conn()
+            .lock()
+            .map_err(|_| anyhow!("fail to lock connection"))?;
+
+        conn.execute(include_str!("../../sqls/0_create_price_table.sql"), ())?;
+        Ok(())
     }
 
-    fn down(&self) -> anyhow::Result<()> {
-        todo!()
+    fn down(&self) -> Result<()> {
+        let mut conn = get_db_conn()
+            .lock()
+            .map_err(|_| anyhow!("fail to lock connection"))?;
+
+        conn.execute("DROP TABLE Prices;", ())?;
+        Ok(())
     }
 
-    fn get_date(&self) -> Result<DateTime<Utc>> {
-        let date_str = "2024-05-02 11:30:00 +0000";
-        // Define the format matching the string exactly
-        let format = "%Y-%m-%d %H:%M:%S %z";
+    fn get_date(&self) -> Result<NaiveDateTime> {
+        let date_str = "2026-05-01_11:30:00";
+        let format = "%Y-%m-%d_%H:%M:%S";
+        let naive_dt_time = NaiveDateTime::parse_from_str(date_str, format)?;
 
-        // Parse to FixedOffset first
-        let dt = DateTime::parse_from_str(date_str, format).expect("Failed to parse");
+        Ok(naive_dt_time)
+    }
+}
 
-        // Convert to Utc or Local if needed
-        let utc_dt: DateTime<Utc> = DateTime::from(dt);
+#[derive(Debug)]
+struct Migration2;
 
-        Ok(utc_dt)
+impl MigrationTrait for Migration2 {
+    fn get_id(&self) -> String {
+        "2".into()
+    }
+
+    fn get_name(&self) -> String {
+        "create user table".into()
+    }
+
+    fn get_description(&self) -> String {
+        "create user table".into()
+    }
+
+    fn up(&self) -> Result<()> {
+        let mut conn = get_db_conn()
+            .lock()
+            .map_err(|_| anyhow!("fail to lock connection"))?;
+
+        conn.execute(include_str!("../../sqls/1_create_user_table.sql"), ())?;
+        Ok(())
+    }
+
+    fn down(&self) -> Result<()> {
+        let mut conn = get_db_conn()
+            .lock()
+            .map_err(|_| anyhow!("fail to lock connection"))?;
+
+        conn.execute("DROP TABLE Users ;", ())?;
+        Ok(())
+    }
+
+    fn get_date(&self) -> Result<NaiveDateTime> {
+        let date_str = "2026-05-03_11:30:00";
+        let format = "%Y-%m-%d_%H:%M:%S";
+        let naive_dt_time = NaiveDateTime::parse_from_str(date_str, format)?;
+
+        Ok(naive_dt_time)
     }
 }
 
@@ -173,18 +277,16 @@ mod test_firebird_migrator_bin {
     use super::*;
 
     #[test]
-    fn string_to_date() {
-        let date_str = "2024-05-02 11:30:00 +0000";
-        // Define the format matching the string exactly
-        let format = "%Y-%m-%d %H:%M:%S %z";
+    fn test_string_to_date() -> Result<()> {
+        let date_str = "2024-05-02_11:30:00";
+        let format = "%Y-%m-%d_%H:%M:%S";
 
-        // Parse to FixedOffset first
-        let dt = DateTime::parse_from_str(date_str, format).expect("Failed to parse");
+        let naive_dt_time =
+            NaiveDateTime::parse_from_str(date_str, format).expect("Failed to parse");
 
-        // Convert to Utc or Local if needed
-        let utc_dt: DateTime<Utc> = DateTime::from(dt);
+        println!("{}", naive_dt_time);
 
-        println!("{}", utc_dt);
+        Ok(())
     }
 
     #[test]

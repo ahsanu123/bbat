@@ -1,17 +1,17 @@
-use std::env;
-use std::sync::Mutex;
-
+use anyhow::anyhow;
 use anyhow::{Ok, Result};
 use chrono::DateTime;
 use chrono::Utc;
 use once_cell::sync::OnceCell;
-use rsfbclient::Queryable;
 use rsfbclient::Row;
 use rsfbclient::SimpleConnection;
+use rsfbclient::{Execute, Queryable};
 use simple_migrator::models::MigrationStatus;
 use simple_migrator::{
     executor::ExecutorTrait, migrations::MigrationTrait, runner_builder::RunnerBuilder,
 };
+use std::env;
+use std::sync::Mutex;
 
 fn main() -> Result<()> {
     let fb_runner = RunnerBuilder::create()
@@ -47,33 +47,83 @@ pub fn get_db_conn() -> &'static Mutex<SimpleConnection> {
 struct FirebirdDbExecutor;
 
 impl ExecutorTrait for FirebirdDbExecutor {
-    fn execute(&mut self, statement: String) -> anyhow::Result<()> {
-        todo!()
+    fn execute<P: rsfbclient::IntoParams>(&mut self, statement: String, param: P) -> Result<()> {
+        let mut conn = get_db_conn()
+            .lock()
+            .map_err(|_| anyhow!("fail to lock DATABASE_CONNECTION"))?;
+
+        conn.execute(&statement, param)?;
+
+        Ok(())
     }
 
-    fn query<T>(&mut self, statement: String) -> anyhow::Result<T> {
+    fn query<T, P: rsfbclient::IntoParams>(&mut self, statement: String, param: P) -> Result<T> {
         todo!()
     }
 
     fn get_applied(&self) -> Result<Vec<MigrationStatus>> {
-        let mut conn = get_db_conn().lock().expect("fail to lock connection");
+        let mut conn = get_db_conn()
+            .lock()
+            .map_err(|_| anyhow!("fail to lock DATABASE_CONNECTION"))?;
+
         let rows: Vec<Row> = conn
             .query("SELECT * FROM GETAPPLIEDMIGRATIONS", ())
             .expect("fail to query get_applied");
 
-        todo!()
+        let migrations_status: Vec<MigrationStatus> = rows.iter().map(|row| row.into()).collect();
+
+        Ok(migrations_status)
     }
 
     fn ensure_migration_table(&mut self) -> Result<()> {
-        todo!()
+        let mut conn = get_db_conn()
+            .lock()
+            .map_err(|_| anyhow!("fail to lock connection"))?;
+
+        let ensure_proc: Vec<Row> = conn.query(
+            "SELECT 1 FROM RDB$PROCEDURES WHERE RDB$PROCEDURE_NAME = 'ENSUREMIGRATIONTABLE';",
+            (),
+        )?;
+
+        if ensure_proc.is_empty() {
+            conn.execute(
+                include_str!("../../sqls/meta_ensure_migration_table.sql"),
+                (),
+            )?;
+
+            let result: Vec<(bool,)> =
+                conn.query("SELECT CREATED FROM ENSUREMIGRATIONTABLE;", ())?;
+
+            let (_,) = result
+                .first()
+                .ok_or(anyhow!("fail to run ENSUREMIGRATIONTABLE"))?;
+        }
+
+        Ok(())
     }
 
     fn upsert_migration_status(&self, mig_status: MigrationStatus) -> Result<()> {
-        todo!()
+        let mut conn = get_db_conn()
+            .lock()
+            .map_err(|_| anyhow!("fail to lock connection"))?;
+
+        let positional_param = mig_status.into_positional_param();
+        let _: Vec<Row> = conn.query(
+            "SELECT * FROM UpsertMigrationStatus( ?, ?, ?, ?, ?);",
+            positional_param,
+        )?;
+
+        Ok(())
     }
 
     fn delete_migration_status(&self, mig_status_id: String) -> Result<()> {
-        todo!()
+        let mut conn = get_db_conn()
+            .lock()
+            .map_err(|_| anyhow!("fail to lock connection"))?;
+
+        conn.execute("SELECT * FROM DELETEMIGRATIONSTATUS(?)", (mig_status_id,))?;
+
+        Ok(())
     }
 }
 
@@ -117,7 +167,8 @@ impl MigrationTrait for Migration1 {
 
 #[cfg(test)]
 mod test_firebird_migrator_bin {
-    use rsfbclient::SystemInfos;
+
+    use chrono::Local;
 
     use super::*;
 
@@ -137,20 +188,142 @@ mod test_firebird_migrator_bin {
     }
 
     #[test]
-    fn test_get_applied() {
+    fn test_get_prices() {
         let mut conn = get_db_conn().lock().expect("fail to lock connection");
 
         let rows: Vec<Row> = conn
             .query("SELECT * FROM PRICES", ())
-            // .query("SELECT * FROM SimpleMigrator;", ())
             .expect("fail to query get_applied");
 
         for row in rows {
             println!("------------------------------------");
-
             for col in row.cols {
                 println!("{}: {:?}", col.name, col.value);
             }
         }
+    }
+
+    #[test]
+    fn test_ensure_migration_table() -> Result<()> {
+        let mut conn = get_db_conn()
+            .lock()
+            .map_err(|_| anyhow!("fail to lock connection"))?;
+
+        let ensure_proc: Vec<Row> = conn.query(
+            "SELECT 1 FROM RDB$PROCEDURES WHERE RDB$PROCEDURE_NAME = 'ENSUREMIGRATIONTABLE';",
+            (),
+        )?;
+
+        if ensure_proc.is_empty() {
+            conn.execute(
+                include_str!("../../sqls/meta_ensure_migration_table.sql"),
+                (),
+            )?;
+
+            let result: Vec<(bool,)> =
+                conn.query("SELECT CREATED FROM ENSUREMIGRATIONTABLE;", ())?;
+
+            let (_,) = result
+                .first()
+                .ok_or(anyhow!("fail to run ENSUREMIGRATIONTABLE"))?;
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_from_row() -> Result<()> {
+        let mut conn = get_db_conn()
+            .lock()
+            .map_err(|_| anyhow!("fail to lock connection"))?;
+
+        let rows: Vec<Row> = conn.query("SELECT * FROM SIMPLEMIGRATOR", ())?;
+
+        let migration_status: Vec<MigrationStatus> = rows.iter().map(|row| row.into()).collect();
+
+        println!("migration_status: {:#?}", migration_status);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_create_all_meta_procedure() -> Result<()> {
+        let mut conn = get_db_conn()
+            .lock()
+            .map_err(|_| anyhow!("fail to lock connection"))?;
+
+        conn.execute(
+            include_str!("../../sqls/meta_delete_migration_status.sql"),
+            (),
+        )?;
+
+        conn.execute(
+            include_str!("../../sqls/meta_ensure_migration_table.sql"),
+            (),
+        )?;
+
+        conn.execute(
+            include_str!("../../sqls/meta_get_applied_migration_status.sql"),
+            (),
+        )?;
+
+        conn.execute(
+            include_str!("../../sqls/meta_upsert_migration_status.sql"),
+            (),
+        )?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_applied_migrations() -> Result<()> {
+        let mut conn = get_db_conn()
+            .lock()
+            .map_err(|_| anyhow!("fail to lock DATABASE_CONNECTION"))?;
+
+        let rows: Vec<Row> = conn
+            .query("SELECT * FROM GETAPPLIEDMIGRATIONS", ())
+            .expect("fail to query get_applied");
+
+        let migrations_status: Vec<MigrationStatus> = rows.iter().map(|row| row.into()).collect();
+
+        println!("applied migrations: {:#?}", migrations_status);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_upsert_migration_status() -> Result<()> {
+        let mig_status = MigrationStatus {
+            migration_id: "2".into(),
+            name: Some("second migrations".into()),
+            description: Some("hello world second migration".into()),
+            is_applied: true,
+            applied_date: Some(Local::now().naive_local()),
+        };
+
+        let mut conn = get_db_conn()
+            .lock()
+            .map_err(|_| anyhow!("fail to lock connection"))?;
+
+        let positional_param = mig_status.into_positional_param();
+
+        let _: Vec<Row> = conn.query(
+            "SELECT * FROM UpsertMigrationStatus( ?, ?, ?, ?, ?);",
+            positional_param,
+        )?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_delete_migration_status() -> Result<()> {
+        let mut conn = get_db_conn()
+            .lock()
+            .map_err(|_| anyhow!("fail to lock connection"))?;
+
+        let _: Vec<Row> = conn.query("SELECT * FROM DELETEMIGRATIONSTATUS(?)", ("2",))?;
+
+        Ok(())
     }
 }

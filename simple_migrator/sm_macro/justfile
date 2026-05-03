@@ -1,0 +1,3 @@
+tme: 
+  rm -f tests/expands/*.expanded.rs
+  cargo test test_macro_expand -- --nocapture

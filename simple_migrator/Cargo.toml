@@ -14,3 +14,5 @@ rsfbclient = { version = "0.26.0", features = [
   "linking",
 ] }
 serde = { version = "1.0.228", feature = ["derive"] }
+
+simple_migrator_macro = { path = "./sm_macro" }

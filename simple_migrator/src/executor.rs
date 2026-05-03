@@ -1,10 +1,11 @@
 use anyhow::Result;
+use rsfbclient::IntoParams;
 
 use crate::models::MigrationStatus;
 
 pub trait ExecutorTrait {
-    fn execute(&mut self, statement: String) -> Result<()>;
-    fn query<T>(&mut self, statement: String) -> Result<T>;
+    fn execute<P: IntoParams>(&mut self, statement: String, param: P) -> Result<()>;
+    fn query<T, P: IntoParams>(&mut self, statement: String, param: P) -> Result<T>;
     fn get_applied(&self) -> Result<Vec<MigrationStatus>>;
 
     fn ensure_migration_table(&mut self) -> Result<()>;

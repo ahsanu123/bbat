@@ -1,17 +1,17 @@
-use std::env;
-use std::sync::Mutex;
-
+use anyhow::anyhow;
 use anyhow::{Ok, Result};
 use chrono::DateTime;
 use chrono::Utc;
 use once_cell::sync::OnceCell;
-use rsfbclient::Queryable;
 use rsfbclient::Row;
 use rsfbclient::SimpleConnection;
+use rsfbclient::{Execute, Queryable};
 use simple_migrator::models::MigrationStatus;
 use simple_migrator::{
     executor::ExecutorTrait, migrations::MigrationTrait, runner_builder::RunnerBuilder,
 };
+use std::env;
+use std::sync::Mutex;
 
 fn main() -> Result<()> {
     let fb_runner = RunnerBuilder::create()
@@ -47,16 +47,24 @@ pub fn get_db_conn() -> &'static Mutex<SimpleConnection> {
 struct FirebirdDbExecutor;
 
 impl ExecutorTrait for FirebirdDbExecutor {
-    fn execute(&mut self, statement: String) -> anyhow::Result<()> {
-        todo!()
+    fn execute<P: rsfbclient::IntoParams>(&mut self, statement: String, param: P) -> Result<()> {
+        let mut conn = get_db_conn()
+            .lock()
+            .map_err(|_| anyhow!("fail to lock DATABASE_CONNECTION"))?;
+
+        conn.execute(&statement, param)?;
+
+        Ok(())
     }
 
-    fn query<T>(&mut self, statement: String) -> anyhow::Result<T> {
+    fn query<T, P: rsfbclient::IntoParams>(&mut self, statement: String, param: P) -> Result<T> {
         todo!()
     }
 
     fn get_applied(&self) -> Result<Vec<MigrationStatus>> {
-        let mut conn = get_db_conn().lock().expect("fail to lock connection");
+        let mut conn = get_db_conn()
+            .lock()
+            .map_err(|_| anyhow!("fail to lock DATABASE_CONNECTION"))?;
         let rows: Vec<Row> = conn
             .query("SELECT * FROM GETAPPLIEDMIGRATIONS", ())
             .expect("fail to query get_applied");
@@ -65,7 +73,30 @@ impl ExecutorTrait for FirebirdDbExecutor {
     }
 
     fn ensure_migration_table(&mut self) -> Result<()> {
-        todo!()
+        let mut conn = get_db_conn()
+            .lock()
+            .map_err(|_| anyhow!("fail to lock connection"))?;
+
+        let ensure_proc: Vec<Row> = conn.query(
+            "SELECT 1 FROM RDB$PROCEDURES WHERE RDB$PROCEDURE_NAME = 'ENSUREMIGRATIONTABLE';",
+            (),
+        )?;
+
+        if ensure_proc.is_empty() {
+            conn.execute(
+                include_str!("../../sqls/meta_ensure_migration_table.sql"),
+                (),
+            )?;
+
+            let result: Vec<(bool,)> =
+                conn.query("SELECT CREATED FROM ENSUREMIGRATIONTABLE;", ())?;
+
+            let (_,) = result
+                .first()
+                .ok_or(anyhow!("fail to run ENSUREMIGRATIONTABLE"))?;
+        }
+
+        Ok(())
     }
 
     fn upsert_migration_status(&self, mig_status: MigrationStatus) -> Result<()> {
@@ -117,7 +148,6 @@ impl MigrationTrait for Migration1 {
 
 #[cfg(test)]
 mod test_firebird_migrator_bin {
-    use rsfbclient::SystemInfos;
 
     use super::*;
 
@@ -137,20 +167,46 @@ mod test_firebird_migrator_bin {
     }
 
     #[test]
-    fn test_get_applied() {
+    fn test_get_prices() {
         let mut conn = get_db_conn().lock().expect("fail to lock connection");
 
         let rows: Vec<Row> = conn
             .query("SELECT * FROM PRICES", ())
-            // .query("SELECT * FROM SimpleMigrator;", ())
             .expect("fail to query get_applied");
 
         for row in rows {
             println!("------------------------------------");
-
             for col in row.cols {
                 println!("{}: {:?}", col.name, col.value);
             }
         }
+    }
+
+    #[test]
+    fn test_ensure_migration_table() -> Result<()> {
+        let mut conn = get_db_conn()
+            .lock()
+            .map_err(|_| anyhow!("fail to lock connection"))?;
+
+        let ensure_proc: Vec<Row> = conn.query(
+            "SELECT 1 FROM RDB$PROCEDURES WHERE RDB$PROCEDURE_NAME = 'ENSUREMIGRATIONTABLE';",
+            (),
+        )?;
+
+        if ensure_proc.is_empty() {
+            conn.execute(
+                include_str!("../../sqls/meta_ensure_migration_table.sql"),
+                (),
+            )?;
+
+            let result: Vec<(bool,)> =
+                conn.query("SELECT CREATED FROM ENSUREMIGRATIONTABLE;", ())?;
+
+            let (_,) = result
+                .first()
+                .ok_or(anyhow!("fail to run ENSUREMIGRATIONTABLE"))?;
+        }
+
+        Ok(())
     }
 }

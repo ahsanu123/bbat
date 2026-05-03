@@ -1,4 +1,5 @@
 pub mod executor;
+pub mod from_rows;
 pub mod migrations;
 pub mod models;
 pub mod runner;

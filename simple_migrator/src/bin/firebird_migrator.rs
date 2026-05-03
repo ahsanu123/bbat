@@ -5,6 +5,8 @@ use anyhow::{Ok, Result};
 use chrono::DateTime;
 use chrono::Utc;
 use once_cell::sync::OnceCell;
+use rsfbclient::Queryable;
+use rsfbclient::Row;
 use rsfbclient::SimpleConnection;
 use simple_migrator::models::MigrationStatus;
 use simple_migrator::{
@@ -34,7 +36,7 @@ pub fn get_db_conn() -> &'static Mutex<SimpleConnection> {
             .with_dyn_link()
             .with_embedded()
             .db_name(db_path.to_string_lossy())
-            .user("ah")
+            .user("sysdba")
             .connect()
             .unwrap();
 
@@ -54,6 +56,11 @@ impl ExecutorTrait for FirebirdDbExecutor {
     }
 
     fn get_applied(&self) -> Result<Vec<MigrationStatus>> {
+        let mut conn = get_db_conn().lock().expect("fail to lock connection");
+        let rows: Vec<Row> = conn
+            .query("SELECT * FROM GETAPPLIEDMIGRATIONS", ())
+            .expect("fail to query get_applied");
+
         todo!()
     }
 
@@ -110,6 +117,8 @@ impl MigrationTrait for Migration1 {
 
 #[cfg(test)]
 mod test_firebird_migrator_bin {
+    use rsfbclient::SystemInfos;
+
     use super::*;
 
     #[test]
@@ -125,5 +134,23 @@ mod test_firebird_migrator_bin {
         let utc_dt: DateTime<Utc> = DateTime::from(dt);
 
         println!("{}", utc_dt);
+    }
+
+    #[test]
+    fn test_get_applied() {
+        let mut conn = get_db_conn().lock().expect("fail to lock connection");
+
+        let rows: Vec<Row> = conn
+            .query("SELECT * FROM PRICES", ())
+            // .query("SELECT * FROM SimpleMigrator;", ())
+            .expect("fail to query get_applied");
+
+        for row in rows {
+            println!("------------------------------------");
+
+            for col in row.cols {
+                println!("{}: {:?}", col.name, col.value);
+            }
+        }
     }
 }

@@ -9,6 +9,9 @@
     <file url="file://$PROJECT_DIR$/sqls/4_create_payment_table.sql" value="17b094d8-4dfe-4148-a1cc-a0af55d0ec67" />
     <file url="file://$PROJECT_DIR$/sqls/5_create_balance_table.sql" value="17b094d8-4dfe-4148-a1cc-a0af55d0ec67" />
     <file url="file://$PROJECT_DIR$/sqls/6_create_customer_balance_table.sql" value="17b094d8-4dfe-4148-a1cc-a0af55d0ec67" />
+    <file url="file://$PROJECT_DIR$/sqls/meta_delete_migration_status.sql" value="17b094d8-4dfe-4148-a1cc-a0af55d0ec67" />
     <file url="file://$PROJECT_DIR$/sqls/meta_ensure_migration_table.sql" value="17b094d8-4dfe-4148-a1cc-a0af55d0ec67" />
+    <file url="file://$PROJECT_DIR$/sqls/meta_get_applied_migration_status.sql" value="17b094d8-4dfe-4148-a1cc-a0af55d0ec67" />
+    <file url="file://$PROJECT_DIR$/sqls/meta_upsert_migration_status.sql" value="17b094d8-4dfe-4148-a1cc-a0af55d0ec67" />
   </component>
 </project>

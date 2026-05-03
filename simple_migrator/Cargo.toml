@@ -11,7 +11,6 @@ once_cell = "1.21.4"
 rsfbclient = { version = "0.26.0", features = [
   "native_client",
   "dynamic_loading",
-  "pure_rust",
   "linking",
 ] }
 serde = { version = "1.0.228", feature = ["derive"] }

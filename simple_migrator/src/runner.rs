@@ -13,7 +13,7 @@ pub trait RunnerTrait {
     fn up_to(&mut self, migration_id: String) -> Result<()>;
     fn down_to(&mut self, migration_id: String) -> Result<()>;
 
-    fn ensure_migration_table(&mut self) -> Result<()>;
+    fn ensure_meta_procedures(&mut self) -> Result<()>;
 
     fn print_all_migrations(&self) -> Result<()>;
 }
@@ -43,7 +43,7 @@ where
     EX: ExecutorTrait,
 {
     fn up(&mut self) -> Result<()> {
-        self.ensure_migration_table()?;
+        self.ensure_meta_procedures()?;
 
         let unapplied_migrations: Vec<String> = self
             .get_unapplied()?
@@ -78,7 +78,7 @@ where
     }
 
     fn down(&mut self) -> Result<()> {
-        self.ensure_migration_table()?;
+        self.ensure_meta_procedures()?;
         let applied_migrations: Vec<String> = self
             .get_applied()?
             .iter()
@@ -147,7 +147,7 @@ where
     }
 
     fn up_to(&mut self, migration_id: String) -> Result<()> {
-        self.ensure_migration_table()?;
+        self.ensure_meta_procedures()?;
         let applied_migrations: Vec<String> = self
             .get_applied()?
             .iter()
@@ -174,7 +174,7 @@ where
     }
 
     fn down_to(&mut self, migration_id: String) -> Result<()> {
-        self.ensure_migration_table()?;
+        self.ensure_meta_procedures()?;
         let unapplied_migrations: Vec<String> = self
             .get_unapplied()?
             .iter()
@@ -200,8 +200,8 @@ where
         Ok(())
     }
 
-    fn ensure_migration_table(&mut self) -> Result<()> {
-        self.executor.ensure_migration_table()
+    fn ensure_meta_procedures(&mut self) -> Result<()> {
+        self.executor.ensure_meta_procedures()
     }
 
     fn print_all_migrations(&self) -> Result<()> {

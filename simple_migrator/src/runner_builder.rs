@@ -31,12 +31,11 @@ where
         self
     }
 
-    pub fn add_migrations<M: MigrationTrait + 'static>(mut self, migrations: Vec<M>) -> Self {
-        let list_box_migration = migrations
-            .into_iter()
-            .map(|mig| Box::new(mig) as Box<dyn MigrationTrait + 'static>);
+    pub fn add_migrations(mut self, migrations: Vec<Box<dyn MigrationTrait>>) -> Self {
+        for mig in migrations {
+            self.migrations.push(mig);
+        }
 
-        self.migrations.extend(list_box_migration);
         self
     }
 

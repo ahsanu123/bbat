@@ -5,11 +5,11 @@ use once_cell::sync::OnceCell;
 use rsfbclient::Row;
 use rsfbclient::SimpleConnection;
 use rsfbclient::{Execute, Queryable};
+use simple_migrator::get_db_conn;
 use simple_migrator::models::MigrationStatus;
+use simple_migrator::platforms::firebirdsql::FirebirdDbExecutor;
 use simple_migrator::runner::RunnerTrait;
-use simple_migrator::{
-    executor::ExecutorTrait, migrations::MigrationTrait, runner_builder::RunnerBuilder,
-};
+use simple_migrator::{migrations::MigrationTrait, runner_builder::RunnerBuilder};
 use std::env;
 use std::sync::Mutex;
 
@@ -47,9 +47,10 @@ fn main() -> Result<()> {
 
     let mut fb_runner = RunnerBuilder::create()
         .with_executor(FirebirdDbExecutor)
-        .add_migration(Migration1)
-        .add_migration(Migration2)
+        .add_migrations(vec![Box::new(Migration1), Box::new(Migration2)])
         .build()?;
+
+    fb_runner.ensure_meta_procedures()?;
 
     match cli.mode {
         Mode::Up => {
@@ -80,107 +81,6 @@ fn main() -> Result<()> {
     };
 
     Ok(())
-}
-
-pub static DATABASE_CONNECTION: OnceCell<Mutex<SimpleConnection>> = OnceCell::new();
-
-pub fn get_db_conn() -> &'static Mutex<SimpleConnection> {
-    DATABASE_CONNECTION.get_or_init(|| {
-        let cwd = env::current_dir().unwrap();
-        println!("cwd: {}", cwd.to_string_lossy());
-
-        let db_path = cwd.join("firebird-test.fdb");
-        println!("cwd: {}", db_path.to_string_lossy());
-
-        let conn = rsfbclient::builder_native()
-            .with_dyn_link()
-            .with_embedded()
-            .db_name(db_path.to_string_lossy())
-            .user("sysdba")
-            .connect()
-            .unwrap();
-
-        Mutex::new(conn.into())
-    })
-}
-
-struct FirebirdDbExecutor;
-
-impl ExecutorTrait for FirebirdDbExecutor {
-    fn execute<P: rsfbclient::IntoParams>(&mut self, statement: String, param: P) -> Result<()> {
-        let mut conn = get_db_conn()
-            .lock()
-            .map_err(|_| anyhow!("fail to lock DATABASE_CONNECTION"))?;
-
-        conn.execute(&statement, param)?;
-
-        Ok(())
-    }
-
-    fn get_applied(&self) -> Result<Vec<MigrationStatus>> {
-        let mut conn = get_db_conn()
-            .lock()
-            .map_err(|_| anyhow!("fail to lock DATABASE_CONNECTION"))?;
-
-        let rows: Vec<Row> = conn
-            .query("SELECT * FROM GETAPPLIEDMIGRATIONS", ())
-            .expect("fail to query get_applied");
-
-        let migrations_status: Vec<MigrationStatus> = rows.iter().map(|row| row.into()).collect();
-
-        Ok(migrations_status)
-    }
-
-    fn ensure_migration_table(&mut self) -> Result<()> {
-        let mut conn = get_db_conn()
-            .lock()
-            .map_err(|_| anyhow!("fail to lock connection"))?;
-
-        let ensure_proc: Vec<Row> = conn.query(
-            "SELECT 1 FROM RDB$PROCEDURES WHERE RDB$PROCEDURE_NAME = 'ENSUREMIGRATIONTABLE';",
-            (),
-        )?;
-
-        if ensure_proc.is_empty() {
-            conn.execute(
-                include_str!("../../sqls/meta_ensure_migration_table.sql"),
-                (),
-            )?;
-
-            let result: Vec<(bool,)> =
-                conn.query("SELECT CREATED FROM ENSUREMIGRATIONTABLE;", ())?;
-
-            let (_,) = result
-                .first()
-                .ok_or(anyhow!("fail to run ENSUREMIGRATIONTABLE"))?;
-        }
-
-        Ok(())
-    }
-
-    fn upsert_migration_status(&self, mig_status: MigrationStatus) -> Result<()> {
-        let mut conn = get_db_conn()
-            .lock()
-            .map_err(|_| anyhow!("fail to lock connection"))?;
-
-        let positional_param = mig_status.into_positional_param();
-        let _: Vec<Row> = conn.query(
-            "SELECT * FROM UpsertMigrationStatus( ?, ?, ?, ?, ?);",
-            positional_param,
-        )?;
-
-        Ok(())
-    }
-
-    fn delete_migration_status(&self, mig_status_id: String) -> Result<()> {
-        let mut conn = get_db_conn()
-            .lock()
-            .map_err(|_| anyhow!("fail to lock connection"))?;
-
-        conn.execute("SELECT * FROM DELETEMIGRATIONSTATUS(?)", (mig_status_id,))?;
-
-        Ok(())
-    }
 }
 
 #[derive(Debug)]

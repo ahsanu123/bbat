@@ -1,0 +1,63 @@
+last_updated: 26-06-2026 {
+  todo: |md
+    - look where `process()` is used
+    - look how this library implement digital filter 
+    - look how this lib implement delay
+    - and look how this lib use delay to make delay based effect like reverb
+  |
+}
+
+an: struct An<X: AudioNode>(pub X)
+pipe: struct Pipe<X: AudioNode, Y: AudioNode<Inputs = X::Outputs>>
+fn_sine: fn sine() -> An<Sine<f64>>
+fn_constant: fn constant<X: ConstantFrame<Sample = f32>>(x: X) -> An<Constant<X::Size>>
+audio_node: struct AudioNode: Clone + Sync + Send
+
+constant: struct Constant<N: Size<f32>>
+sine: struct Sine<F: Real>
+
+audio_node <- constant: implement
+audio_node <- sine: implement
+
+fn_sine -> an -> sine
+fn_constant -> an -> constant
+
+fn_constant -> pipe
+pipe -> fn_sine
+
+description: {
+  entry_point: |`md
+    # entry point  
+
+    entry point is coming from `AudioNode.get_stereo()` or `AudioNode.get_mono()`,  
+    then it will calling `tick()` method `AudioNode`, for example if  
+    program is like `let c = constant(440.0) >> sine()` c is `Pipe` and Pipe  
+    is implement AudioNode (from this implementation `impl<X, Y> Shr<An<Y>> for An<X>`)  
+    pipe will first call `X` then `Y` and producing new result.  
+    `constant(f)` is producing `Frame` then output of constant (X) is _piped_ to sine (Y)  
+
+
+    ```rust
+    impl<X, Y> AudioNode for Pipe<X, Y>
+    where
+        X: AudioNode,
+        Y: AudioNode<Inputs = X::Outputs>,
+    {
+        const ID: u64 = 6;
+        type Inputs = X::Inputs;
+        type Outputs = Y::Outputs;
+        #[inline]
+        fn tick(&mut self, input: &Frame<f32, Self::Inputs>) -> Frame<f32, Self::Outputs> {
+            self.y.tick(&self.x.tick(input))
+        }
+
+        fn process(&mut self, size: usize, input: &BufferRef, output: &mut BufferMut) {
+            let mut buffer = BufferArray::<X::Outputs>::uninitialized();
+            self.x.process(size, input, &mut buffer.buffer_mut());
+            self.y.process(size, &buffer.buffer_ref(), output);
+        }
+      }
+    ```
+
+  `|
+}

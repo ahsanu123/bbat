@@ -1,0 +1,23 @@
+[package]
+name = "vello_winit"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bytemuck = "1.25.2"
+glifo = "0.4.0"
+image = "0.25.10"
+parley = "0.11.1"
+pollster = "1.0.1"
+smallvec = "1.16.2"
+vello_common = { version = "0.3.0", features = ["pico_svg", "png"] }
+vello_gpu = { version = "0.3.0", features = ["text", "wgpu", "wgpu_default"] }
+wgpu = { version = "30.0.0", features = ["std", "wgsl"] }
+winit = "0.30.13"
+
+[profile.dev]
+opt-level = 1
+
+# reduce gpu to cpu debug bottleneck
+[profile.dev.package."*"]
+opt-level = 3
